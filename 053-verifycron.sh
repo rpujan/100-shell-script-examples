@@ -2,10 +2,10 @@
 
 # verifycron - script checks a crontab file to ensure that it's
 #    formatted properly.  Expects standard cron notation of
-#       min hr dom mon dow CMD    
+#       min hr dom mon dow CMD
 #    where min is 0-59, hr 0-23, dom is 1-31, mon is 1-12 (or names)
 #    and dow is 0-7 (or names).  Fields can have ranges (a-e), lists
-#    separated by commas (a,c,z), or an asterisk. Note that the step 
+#    separated by commas (a,c,z), or an asterisk. Note that the step
 #    value notation of Vixie cron is not supported (e.g., 2-6/2).
 
 
@@ -19,6 +19,8 @@ validNum()
   elif [ ! -z $(echo $num | sed 's/[[:digit:]]//g') ] ; then
     return 1
   elif [ $num -lt 0 -o $num -gt $max ] ; then
+    return 1
+  elif [ $num -lt 0 ] ; then
     return 1
   else
     return 0
@@ -40,7 +42,7 @@ validMon()
 {
   # return 0 if a valid month name, 1 otherwise
 
-   case $(echo $1 | tr '[:upper:]' '[:lower:]') in 
+   case $(echo $1 | tr '[:upper:]' '[:lower:]') in
      jan*|feb*|mar*|apr*|may|jun*|jul*|aug*) return 0		;;
      sep*|oct*|nov*|dec*)		     return 0		;;
      X) return 0 ;; # special case, it's an "*"
@@ -69,9 +71,9 @@ lines=0  entries=0  totalerrors=0
 
 while read min hour dom mon dow command
 do
-  lines="$(( $lines + 1 ))" 
+  lines="$(( $lines + 1 ))"
   errors=0
-  
+
   if [ -z "$min" -o "${min%${min#?}}" = "#" ] ; then
     continue	# nothing to check
   elif [ ! -z $(echo ${min%${min#?}} | sed 's/[[:digit:]]//') ] ;  then
@@ -82,7 +84,7 @@ do
 
   fixvars
 
-  #### Broken into fields, all '*' replaced with 'X' 
+  #### Broken into fields, all '*' replaced with 'X'
   # minute check
 
   for minslice in $(echo "$min" | sed 's/[,-]/ /g') ; do
@@ -93,10 +95,10 @@ do
   done
 
   # hour check
-  
+
   for hrslice in $(echo "$hour" | sed 's/[,-]/ /g') ; do
     if ! validNum $hrslice 24 ; then
-      echo "Line ${lines}: Invalid hour value \"$hrslice\"" 
+      echo "Line ${lines}: Invalid hour value \"$hrslice\""
       errors=1
     fi
   done
@@ -120,6 +122,16 @@ do
       fi
     fi
   done
+
+  for monslice in $(echo "$mon" | sed 's/[,-]/ /g') ; do
+    if ! validNum $monslice 12 ; then
+      if ! validMon "$monslice" ; then
+        echo "Line ${lines}: Invalid month value \"$monslice\""
+        errors=1
+      fi
+    fi
+  done
+
 
   # day of week check
 
